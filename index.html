@@ -197,137 +197,158 @@
 
     <iframe name="hiddenFrame"></iframe>
 
-    <script>
-      const textarea = document.getElementById("dump");
-      const statusBox = document.getElementById("status");
-      const dictateButton = document.getElementById("dictateButton");
-      const captureButton = document.getElementById("captureButton");
-      const hiddenDump = document.getElementById("hiddenDump");
-      const postForm = document.getElementById("postForm");
+   <script>
+  const textarea = document.getElementById("dump");
+  const statusBox = document.getElementById("status");
+  const dictateButton = document.getElementById("dictateButton");
+  const captureButton = document.getElementById("captureButton");
+  const hiddenDump = document.getElementById("hiddenDump");
+  const postForm = document.getElementById("postForm");
 
-      let recognition = null;
-      let isListening = false;
-      let baseText = "";
+  let recognition = null;
+  let isListening = false;
+  let lastAcceptedTranscript = "";
 
-      window.onload = function() {
-        textarea.focus();
-        setupSpeechRecognition();
-      };
+  window.onload = function() {
+    textarea.focus();
+    setupSpeechRecognition();
+  };
 
-      function setupSpeechRecognition() {
-        const SpeechRecognition =
-          window.SpeechRecognition || window.webkitSpeechRecognition;
+  function setupSpeechRecognition() {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        if (!SpeechRecognition) {
-          dictateButton.innerText = "Speech Not Supported";
-          dictateButton.disabled = true;
-          showStatus("Browser speech recognition is not supported here. Try Android Chrome.", true);
-          return;
-        }
+    if (!SpeechRecognition) {
+      dictateButton.innerText = "Speech Not Supported";
+      dictateButton.disabled = true;
+      showStatus("Browser speech recognition is not supported here. Try Android Chrome.", true);
+      return;
+    }
 
-        recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.continuous = true;
-        recognition.interimResults = false;
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-        recognition.onstart = function() {
-          isListening = true;
-          baseText = textarea.value.trim();
-          dictateButton.innerText = "Stop Dictation";
-          dictateButton.classList.add("listening");
-          showStatus("Listening...", false);
-        };
+    recognition.onstart = function() {
+      isListening = true;
+      dictateButton.innerText = "Listening...";
+      dictateButton.classList.add("listening");
+      showStatus("Listening. Speak one thought, then wait.", false);
+    };
 
-      recognition.onresult = function(event) {
-  let finalText = "";
+    recognition.onresult = function(event) {
+      let transcript = "";
 
-  for (let i = event.resultIndex; i < event.results.length; i++) {
-    if (event.results[i].isFinal) {
-      finalText += event.results[i][0].transcript + " ";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript + " ";
+      }
+
+      transcript = cleanTranscript(transcript);
+
+      if (!transcript) {
+        return;
+      }
+
+      if (transcript.toLowerCase() === lastAcceptedTranscript.toLowerCase()) {
+        return;
+      }
+
+      appendTranscript(transcript);
+      lastAcceptedTranscript = transcript;
+      showStatus("Dictation added.", false);
+    };
+
+    recognition.onerror = function(event) {
+      isListening = false;
+      dictateButton.innerText = "Start Dictation";
+      dictateButton.classList.remove("listening");
+      showStatus("Dictation error: " + event.error, true);
+    };
+
+    recognition.onend = function() {
+      isListening = false;
+      dictateButton.innerText = "Start Dictation";
+      dictateButton.classList.remove("listening");
+    };
+  }
+
+  function toggleDictation() {
+    if (!recognition) {
+      return;
+    }
+
+    if (isListening) {
+      recognition.stop();
+      return;
+    }
+
+    try {
+      recognition.start();
+    } catch (error) {
+      showStatus("Could not start dictation: " + error.message, true);
     }
   }
 
-  if (finalText.trim()) {
+  function appendTranscript(transcript) {
     const currentText = textarea.value.trim();
 
-    textarea.value = [currentText, finalText.trim()]
-      .filter(Boolean)
-      .join(" ")
+    if (!currentText) {
+      textarea.value = transcript;
+      return;
+    }
+
+    const lowerCurrent = currentText.toLowerCase();
+    const lowerTranscript = transcript.toLowerCase();
+
+    if (lowerCurrent.endsWith(lowerTranscript)) {
+      return;
+    }
+
+    textarea.value = currentText + " " + transcript;
+  }
+
+  function cleanTranscript(text) {
+    return String(text || "")
       .replace(/\s+/g, " ")
+      .replace(/\s+([.,!?])/g, "$1")
       .trim();
   }
-};
 
-          const combined = [baseText, finalTranscript, interimTranscript]
-            .filter(Boolean)
-            .join(" ")
-            .replace(/\s+/g, " ")
-            .trim();
+  function captureText() {
+    const text = textarea.value.trim();
 
-          textarea.value = combined;
-        };
+    if (!text) {
+      showStatus("Nothing to capture.", true);
+      textarea.focus();
+      return;
+    }
 
-        recognition.onerror = function(event) {
-          isListening = false;
-          dictateButton.innerText = "Start Dictation";
-          dictateButton.classList.remove("listening");
-          showStatus("Dictation error: " + event.error, true);
-        };
+    if (isListening && recognition) {
+      recognition.stop();
+    }
 
-        recognition.onend = function() {
-          isListening = false;
-          dictateButton.innerText = "Start Dictation";
-          dictateButton.classList.remove("listening");
-        };
-      }
+    hiddenDump.value = text;
+    postForm.submit();
 
-      function toggleDictation() {
-        if (!recognition) {
-          return;
-        }
+    textarea.value = "";
+    lastAcceptedTranscript = "";
+    showStatus("Sent to Personal Ops.", false);
+    textarea.focus();
+  }
 
-        if (isListening) {
-          recognition.stop();
-        } else {
-          try {
-            recognition.start();
-          } catch (error) {
-            showStatus("Could not start dictation: " + error.message, true);
-          }
-        }
-      }
+  function clearText() {
+    textarea.value = "";
+    lastAcceptedTranscript = "";
+    textarea.focus();
+    showStatus("Cleared.", false);
+  }
 
-      function captureText() {
-        const text = textarea.value.trim();
-
-        if (!text) {
-          showStatus("Nothing to capture.", true);
-          textarea.focus();
-          return;
-        }
-
-        if (isListening && recognition) {
-          recognition.stop();
-        }
-
-        hiddenDump.value = text;
-        postForm.submit();
-
-        textarea.value = "";
-        showStatus("Sent to Personal Ops.", false);
-        textarea.focus();
-      }
-
-      function clearText() {
-        textarea.value = "";
-        textarea.focus();
-        showStatus("Cleared.", false);
-      }
-
-      function showStatus(message, isError) {
-        statusBox.innerText = message;
-        statusBox.className = isError ? "status error" : "status success";
-      }
-    </script>
+  function showStatus(message, isError) {
+    statusBox.innerText = message;
+    statusBox.className = isError ? "status error" : "status success";
+  }
+</script>
   </body>
 </html>
