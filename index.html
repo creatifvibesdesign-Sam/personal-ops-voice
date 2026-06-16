@@ -228,7 +228,7 @@
         recognition = new SpeechRecognition();
         recognition.lang = "en-US";
         recognition.continuous = true;
-        recognition.interimResults = true;
+        recognition.interimResults = false;
 
         recognition.onstart = function() {
           isListening = true;
@@ -238,19 +238,25 @@
           showStatus("Listening...", false);
         };
 
-        recognition.onresult = function(event) {
-          let finalTranscript = "";
-          let interimTranscript = "";
+      recognition.onresult = function(event) {
+  let finalText = "";
 
-          for (let i = 0; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    if (event.results[i].isFinal) {
+      finalText += event.results[i][0].transcript + " ";
+    }
+  }
 
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript + " ";
-            } else {
-              interimTranscript += transcript;
-            }
-          }
+  if (finalText.trim()) {
+    const currentText = textarea.value.trim();
+
+    textarea.value = [currentText, finalText.trim()]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+};
 
           const combined = [baseText, finalTranscript, interimTranscript]
             .filter(Boolean)
