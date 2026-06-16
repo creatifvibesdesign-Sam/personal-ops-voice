@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Ops Voice</title>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background: #f6f8fb;
+        color: #202124;
+      }
+
+      .app {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 18px;
+      }
+
+      h1 {
+        margin: 0 0 6px 0;
+        font-size: 28px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+        color: #5f6368;
+        line-height: 1.4;
+        margin-bottom: 14px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 300px;
+        box-sizing: border-box;
+        border: 1px solid #dadce0;
+        border-radius: 18px;
+        padding: 18px;
+        font-size: 20px;
+        line-height: 1.45;
+        resize: vertical;
+        outline: none;
+        background: #ffffff;
+      }
+
+      textarea:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+      }
+
+      .buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      button {
+        border: none;
+        border-radius: 16px;
+        padding: 16px;
+        font-size: 17px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .dictate {
+        flex: 1;
+        background: #ffffff;
+        color: #1a73e8;
+        border: 1px solid #dadce0;
+      }
+
+      .capture {
+        flex: 1.3;
+        background: #1a73e8;
+        color: #ffffff;
+      }
+
+      .clear {
+        margin-top: 10px;
+        width: 100%;
+        background: #ffffff;
+        color: #5f6368;
+        border: 1px solid #dadce0;
+      }
+
+      .status {
+        margin-top: 14px;
+        padding: 13px 14px;
+        border-radius: 14px;
+        font-size: 15px;
+        display: none;
+      }
+
+      .success {
+        display: block;
+        background: #e6f4ea;
+        color: #137333;
+      }
+
+      .error {
+        display: block;
+        background: #fce8e6;
+        color: #c5221f;
+      }
+
+      .listening {
+        background: #fce8e6;
+        color: #c5221f;
+        border-color: #c5221f;
+      }
+
+      .hint {
+        margin-top: 16px;
+        font-size: 13px;
+        color: #5f6368;
+        line-height: 1.5;
+      }
+
+      iframe {
+        display: none;
+      }
+
+      @media (max-width: 480px) {
+        .app {
+          padding: 14px;
+        }
+
+        h1 {
+          font-size: 25px;
+        }
+
+        textarea {
+          min-height: 330px;
+          font-size: 19px;
+        }
+
+        .buttons {
+          flex-direction: column;
+        }
+
+        button {
+          width: 100%;
+          font-size: 18px;
+          padding: 17px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app">
+      <h1>Personal Ops Voice</h1>
+
+      <div class="subtitle">
+        Tap Start Dictation, speak naturally, then Capture. This sends the text to your Personal Ops system.
+      </div>
+
+      <textarea
+        id="dump"
+        placeholder="Example: Follow up Hema proposal tomorrow and buy milk and Ryan dentist appointment Thursday 5 PM."
+      ></textarea>
+
+      <div class="buttons">
+        <button id="dictateButton" class="dictate" onclick="toggleDictation()">
+          Start Dictation
+        </button>
+
+        <button id="captureButton" class="capture" onclick="captureText()">
+          Capture
+        </button>
+      </div>
+
+      <button class="clear" onclick="clearText()">
+        Clear
+      </button>
+
+      <div id="status" class="status"></div>
+
+      <div class="hint">
+        This uses your browser’s speech recognition. If it fails, open this page in Android Chrome and make sure microphone permission is allowed.
+      </div>
+    </div>
+
+    <form
+      id="postForm"
+      method="POST"
+      target="hiddenFrame"
+      action="PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE"
+    >
+      <input type="hidden" name="token" value="PersonalOpsPrivate2026">
+      <input type="hidden" id="hiddenDump" name="dump" value="">
+    </form>
+
+    <iframe name="hiddenFrame"></iframe>
+
+    <script>
+      const textarea = document.getElementById("dump");
+      const statusBox = document.getElementById("status");
+      const dictateButton = document.getElementById("dictateButton");
+      const captureButton = document.getElementById("captureButton");
+      const hiddenDump = document.getElementById("hiddenDump");
+      const postForm = document.getElementById("postForm");
+
+      let recognition = null;
+      let isListening = false;
+      let baseText = "";
+
+      window.onload = function() {
+        textarea.focus();
+        setupSpeechRecognition();
+      };
+
+      function setupSpeechRecognition() {
+        const SpeechRecognition =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+          dictateButton.innerText = "Speech Not Supported";
+          dictateButton.disabled = true;
+          showStatus("Browser speech recognition is not supported here. Try Android Chrome.", true);
+          return;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onstart = function() {
+          isListening = true;
+          baseText = textarea.value.trim();
+          dictateButton.innerText = "Stop Dictation";
+          dictateButton.classList.add("listening");
+          showStatus("Listening...", false);
+        };
+
+        recognition.onresult = function(event) {
+          let finalTranscript = "";
+          let interimTranscript = "";
+
+          for (let i = 0; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + " ";
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          const combined = [baseText, finalTranscript, interimTranscript]
+            .filter(Boolean)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+          textarea.value = combined;
+        };
+
+        recognition.onerror = function(event) {
+          isListening = false;
+          dictateButton.innerText = "Start Dictation";
+          dictateButton.classList.remove("listening");
+          showStatus("Dictation error: " + event.error, true);
+        };
+
+        recognition.onend = function() {
+          isListening = false;
+          dictateButton.innerText = "Start Dictation";
+          dictateButton.classList.remove("listening");
+        };
+      }
+
+      function toggleDictation() {
+        if (!recognition) {
+          return;
+        }
+
+        if (isListening) {
+          recognition.stop();
+        } else {
+          try {
+            recognition.start();
+          } catch (error) {
+            showStatus("Could not start dictation: " + error.message, true);
+          }
+        }
+      }
+
+      function captureText() {
+        const text = textarea.value.trim();
+
+        if (!text) {
+          showStatus("Nothing to capture.", true);
+          textarea.focus();
+          return;
+        }
+
+        if (isListening && recognition) {
+          recognition.stop();
+        }
+
+        hiddenDump.value = text;
+        postForm.submit();
+
+        textarea.value = "";
+        showStatus("Sent to Personal Ops.", false);
+        textarea.focus();
+      }
+
+      function clearText() {
+        textarea.value = "";
+        textarea.focus();
+        showStatus("Cleared.", false);
+      }
+
+      function showStatus(message, isError) {
+        statusBox.innerText = message;
+        statusBox.className = isError ? "status error" : "status success";
+      }
+    </script>
+  </body>
+</html>
