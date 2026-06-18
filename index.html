@@ -1,15 +1,19 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
+
   <title>Personal Ops</title>
+
   <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Personal Ops">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Personal Ops">
 
   <style>
     :root {
@@ -115,7 +119,7 @@
     textarea {
       flex: 1;
       width: 100%;
-      min-height: 330px;
+      min-height: 360px;
       resize: none;
       border: 1px solid var(--line);
       border-radius: 24px;
@@ -146,7 +150,7 @@
 
     .buttons {
       display: grid;
-      grid-template-columns: 1fr 92px;
+      grid-template-columns: 1fr 1fr 92px;
       gap: 10px;
     }
 
@@ -157,6 +161,21 @@
       font-size: 17px;
       font-weight: 850;
       cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .mic {
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.22);
+    }
+
+    .mic:active {
+      transform: translateY(1px);
     }
 
     .capture {
@@ -242,7 +261,7 @@
       }
 
       textarea {
-        min-height: 360px;
+        min-height: 370px;
         font-size: 19px;
         border-radius: 22px;
       }
@@ -258,14 +277,6 @@
   </style>
 </head>
 
-  <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./service-worker.js");
-    });
-  }
-</script>
-  
 <body>
   <div class="shell">
     <main class="app">
@@ -282,19 +293,20 @@
           id="dump"
           autocomplete="off"
           spellcheck="true"
-          placeholder="Tap here and use your keyboard mic…
+          placeholder="Tap Dictate, then use your keyboard mic…
 
 Example:
 Buy apples and bananas. Ursula appointment hospital tomorrow at 3 PM. Follow up Siemens proposal today."
         ></textarea>
 
         <div class="helper">
-          Use your Android keyboard microphone inside the box. Then review quickly and press Capture.
+          Tap Dictate to open the keyboard, then tap your keyboard microphone. Review quickly, then press Capture.
         </div>
 
         <div class="buttons">
-          <button class="capture" id="captureButton" onclick="capture()">Capture</button>
-          <button class="clear" onclick="clearBox()">Clear</button>
+          <button class="mic" type="button" onclick="openKeyboard()">🎙️ Dictate</button>
+          <button class="capture" id="captureButton" type="button" onclick="capture()">Capture</button>
+          <button class="clear" type="button" onclick="clearBox()">Clear</button>
         </div>
 
         <div id="status" class="status"></div>
@@ -324,6 +336,7 @@ Buy apples and bananas. Ursula appointment hospital tomorrow at 3 PM. Follow up 
     const captureButton = document.getElementById("captureButton");
 
     const draft = localStorage.getItem("personalOpsDraft");
+
     if (draft) {
       textarea.value = draft;
     }
@@ -337,11 +350,22 @@ Buy apples and bananas. Ursula appointment hospital tomorrow at 3 PM. Follow up 
       statusBox.className = "status " + type;
     }
 
+    function openKeyboard() {
+      textarea.focus();
+
+      const length = textarea.value.length;
+      textarea.setSelectionRange(length, length);
+
+      setStatus("Keyboard opened. Tap your keyboard mic to dictate.", "success");
+    }
+
     function clearBox() {
       textarea.value = "";
       localStorage.removeItem("personalOpsDraft");
+
       statusBox.textContent = "";
       statusBox.className = "status";
+
       textarea.focus();
     }
 
@@ -358,6 +382,7 @@ Buy apples and bananas. Ursula appointment hospital tomorrow at 3 PM. Follow up 
 
       captureButton.disabled = true;
       captureButton.textContent = "Capturing…";
+
       setStatus("Sending to Personal Ops…", "success");
 
       document.getElementById("postForm").submit();
@@ -365,12 +390,21 @@ Buy apples and bananas. Ursula appointment hospital tomorrow at 3 PM. Follow up 
       setTimeout(function () {
         textarea.value = "";
         localStorage.removeItem("personalOpsDraft");
+
         captureButton.disabled = false;
         captureButton.textContent = "Capture";
+
         setStatus("Captured. Check Tasks in a few seconds.", "success");
         textarea.focus();
       }, 1200);
     }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./service-worker.js");
+      });
+    }
   </script>
 </body>
 </html>
+```
