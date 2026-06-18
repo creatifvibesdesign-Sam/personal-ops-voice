@@ -1,16 +1,17 @@
-const CACHE_NAME = "personal-ops-v2";
+const CACHE_NAME = "personal-ops-v4";
 
-const FILES_TO_CACHE = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./icon.svg"
+const APP_FILES = [
+  "/personal-ops-voice/",
+  "/personal-ops-voice/index.html",
+  "/personal-ops-voice/manifest.json",
+  "/personal-ops-voice/icon-192.png",
+  "/personal-ops-voice/icon-512.png"
 ];
 
 self.addEventListener("install", function(event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(FILES_TO_CACHE);
+      return cache.addAll(APP_FILES);
     })
   );
 
@@ -34,6 +35,12 @@ self.addEventListener("activate", function(event) {
 });
 
 self.addEventListener("fetch", function(event) {
+  const requestUrl = new URL(event.request.url);
+
+  if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(function(cachedResponse) {
       return cachedResponse || fetch(event.request);
