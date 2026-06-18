@@ -1,4 +1,4 @@
-const CACHE_NAME = "personal-ops-v1";
+const CACHE_NAME = "personal-ops-v2";
 
 const FILES_TO_CACHE = [
   "./",
