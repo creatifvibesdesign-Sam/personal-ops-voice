@@ -1,0 +1,19 @@
+{
+  "name": "Personal Ops",
+  "short_name": "Personal Ops",
+  "description": "Capture tasks, shopping, calendar items, waiting items, and ideas.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef4ff",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
